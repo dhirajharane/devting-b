@@ -23,7 +23,10 @@ const app = express();
 
 app.use(
   cors({
-    origin: true, //whitelisting thiss domain name so that browser can store cookies
+     origin: [
+      "http://localhost:5147", 
+      "https://devting-f.vercel.app"
+    ], 
     credentials: true,
   })
 );

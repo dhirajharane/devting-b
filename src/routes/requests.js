@@ -4,6 +4,7 @@ const { userAuth } = require("../middlewears/auth");
 const { User } = require("../models/user");
 const { ConnectionRequestModel } = require("../models/connectionRequest");
 
+// Send request (interested/ignored)
 requestsRouter.post(
   "/request/send/:status/:toUserId",
   userAuth,
@@ -21,30 +22,33 @@ requestsRouter.post(
         });
       }
 
+      if (fromUserId.equals(toUserId)) {
+        return res.status(400).json({
+          message: "You can't send request to yourself",
+        });
+      }
+
       const toUser = await User.findById(toUserId);
       if (!toUser) {
         return res.status(400).json({
           message: "Invalid User",
-          toUser,
         });
       }
 
-      //lets check if the req already exist or if the receiver has alreday sent us the request
+      // Prevent duplicate requests in any direction
       const existingRequest = await ConnectionRequestModel.findOne({
         $or: [
-          { fromUserId: fromUserId, toUserId: toUserId }, // existing request
-          { fromUserId: toUserId, toUserId: fromUserId }, // receiver has already sent us the req
+          { fromUserId: fromUserId, toUserId: toUserId },
+          { fromUserId: toUserId, toUserId: fromUserId },
         ],
       });
       if (existingRequest) {
-        res.status(400).json({
-          message: "You already have a connection request",
-          existingRequest,
+        return res.status(400).json({
+          message: "A connection request already exists between these users",
         });
       }
 
       const connectionRequest = new ConnectionRequestModel({
-        // adding the req in db
         fromUserId,
         toUserId,
         status,
@@ -65,6 +69,7 @@ requestsRouter.post(
   }
 );
 
+// Review request (accept/reject)
 requestsRouter.post(
   "/request/review/:status/:requestId",
   userAuth,
@@ -82,18 +87,17 @@ requestsRouter.post(
       }
 
       const connectionRequest = await ConnectionRequestModel.findOne({
-        _id: requestId, //from whom the req has come
-        toUserId: loggedInUser._id, // toUser should be loggedin user because he has to accept or reject the req
-        status: "interested", // status should be interested because , ig ignored there is no such req
+        _id: requestId,
+        toUserId: loggedInUser._id,
+        status: "interested",
       });
       if (!connectionRequest) {
         return res.status(404).json({
-          message: "Connection request not found", // there should be a connection req to accept or reject
+          message: "Connection request not found",
         });
       }
 
-      connectionRequest.status = status; // now we r safe to accept or reject
-
+      connectionRequest.status = status;
       const data = await connectionRequest.save();
 
       res.json({

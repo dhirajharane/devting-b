@@ -4,7 +4,7 @@ const { userAuth } = require("../middlewears/auth");
 const { User } = require("../models/user");
 const { ConnectionRequestModel } = require("../models/connectionRequest");
 
-const safeData = ["firstName", "lastName", "photoURL", "About","Skills"];
+const safeData = ["firstName", "lastName", "photoURL", "About", "Skills"];
 
 userRouter.get("/user/requests/received", userAuth, async (req, res) => {
   try {
@@ -55,31 +55,48 @@ userRouter.get("/user/connections", userAuth, async (req, res) => {
   }
 });
 
+// FEED: Only show users with NO connection/request/ignore/self
 userRouter.get("/feed", userAuth, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   let limit = parseInt(req.query.limit) || 10;
   limit = limit > 50 ? 50 : limit;
-  const skip = (page - 1) * limit;33
+  const skip = (page - 1) * limit;
 
   const loggedInUser = req.user;
 
-  const connectionRequests = await ConnectionRequestModel.find({
-    //the feed should not show user's connections of any type
-    $or: [{ fromUserId: loggedInUser._id }, { toUserId: loggedInUser._id }],
+  // Find all requests/connections/ignores involving the user
+  const allRequests = await ConnectionRequestModel.find({
+    $or: [
+      { fromUserId: loggedInUser._id },
+      { toUserId: loggedInUser._id },
+    ],
   });
 
-  const hideUsersFromFeed = new Set(); // to get unique connections
-
-  connectionRequests.forEach((req) => {
-    hideUsersFromFeed.add(req.fromUserId.toString());
-    hideUsersFromFeed.add(req.toUserId.toString());
+  // Build sets of userIds to exclude
+  const excludeUserIds = new Set();
+  allRequests.forEach((req) => {
+    // Exclude all users with any request/connection
+    excludeUserIds.add(req.fromUserId.toString());
+    excludeUserIds.add(req.toUserId.toString());
+    // If ignored, always exclude the ignored user from the feed
+    if (
+      req.fromUserId.equals(loggedInUser._id) &&
+      req.status === "ignored"
+    ) {
+      excludeUserIds.add(req.toUserId.toString());
+    }
+    if (
+      req.toUserId.equals(loggedInUser._id) &&
+      req.status === "ignored"
+    ) {
+      excludeUserIds.add(req.fromUserId.toString());
+    }
   });
+  // Always exclude self
+  excludeUserIds.add(loggedInUser._id.toString());
 
   const users = await User.find({
-    $and: [
-      { _id: { $nin: Array.from(hideUsersFromFeed) } }, // users which are not in that set
-      { _id: { $ne: loggedInUser._id.toString() } }, // own profile should not be in feed
-    ],
+    _id: { $nin: Array.from(excludeUserIds) },
   })
     .select(safeData)
     .skip(skip)
@@ -89,4 +106,5 @@ userRouter.get("/feed", userAuth, async (req, res) => {
     users,
   });
 });
+
 module.exports = userRouter;

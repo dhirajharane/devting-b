@@ -24,7 +24,7 @@ const app = express();
 app.use(
   cors({
      origin: [
-      "http://localhost:5147", 
+      "http://localhost:5173", 
       "https://devting-f.vercel.app"
     ], 
     credentials: true,

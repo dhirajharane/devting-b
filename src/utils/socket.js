@@ -14,16 +14,13 @@ const initializeSocket = (server) => {
     return `room_${hash.slice(0, 16)}`;
   }
 
-  const io = socket(server, {
-    cors: {
-       origin: [
-      "http://localhost:5173", 
-      "https://devting-f.vercel.app"
-    ], 
-      methods: ["GET", "POST"],
-      credentials: true,
-    },
-  });
+const io = socket(server, {
+  cors: {
+    origin: "https://devting-f.vercel.app",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
 
   io.on("connection", (socket) => {
     let currentUserId = null;

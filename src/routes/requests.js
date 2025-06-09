@@ -48,6 +48,19 @@ requestsRouter.post(
         });
       }
 
+      // Prevent sending request to already connected user
+      const existingConnection = await ConnectionRequestModel.findOne({
+        $or: [
+          { fromUserId: fromUserId, toUserId: toUserId, status: "accepted" },
+          { fromUserId: toUserId, toUserId: fromUserId, status: "accepted" },
+        ],
+      });
+      if (existingConnection) {
+        return res.status(400).json({
+          message: "You are already connected with this user",
+        });
+      }
+
       const connectionRequest = new ConnectionRequestModel({
         fromUserId,
         toUserId,

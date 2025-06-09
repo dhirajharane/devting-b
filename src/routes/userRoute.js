@@ -102,9 +102,11 @@ userRouter.get("/feed", userAuth, async (req, res) => {
     .skip(skip)
     .limit(limit);
 
+  // Always return users array (even if empty)
   res.json({
     users,
   });
 });
 
 module.exports = userRouter;
+

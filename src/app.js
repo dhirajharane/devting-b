@@ -21,6 +21,11 @@ const chatRouter = require("./routes/chats");
 
 const app = express();
 
+// Monitoring endpoint to keep backend awake
+app.get("/ping", (req, res) => {
+  res.status(200).send("Backend is alive");
+});
+
 app.use(
   cors({
      origin: [

@@ -1,30 +1,25 @@
-const jwt=require("jsonwebtoken");
-const {User}=require("../models/user");
+const jwt = require("jsonwebtoken");
+const { User } = require("../models/user");
 
-const userAuth=async (req,res,next)=>{
-    try{
-       const {token}=req.cookies;
-       if(!token){
-        res.status(401).send("Please Login first");
-       }
-
-       const decodedObj=await jwt.verify(token,process.env.JWT_SECRET);
-
-       const {_id}=decodedObj;
-
-       const user= await User.findById(_id);
-       req.user=user;
-       if(!user){
-        throw new Error("Invalid User");
-       }
-       next();
-    } catch(err){
-        res.status(400).send(err.message);
+const userAuth = async (req, res, next) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) {
+      return res.status(401).send("Please login first");  // return added
     }
 
-       
+    const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decodedObj._id);
 
-    
-}
+    if (!user) {
+      return res.status(401).send("Invalid user");  // return added
+    }
 
-module.exports={userAuth}
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(400).send(err.message); // return added
+  }
+};
+
+module.exports = { userAuth };

@@ -26,15 +26,29 @@ app.get("/ping", (req, res) => {
   res.status(200).send("Backend is alive");
 });
 
-app.use(
-  cors({
-     origin: [
-      "http://localhost:5173", 
-      "https://devting-f.vercel.app"
-    ], 
-    credentials: true,
-  })
-);
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://devting-f.vercel.app"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow mobile clients or curl
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(new Error('Not allowed by CORS'));
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  allowedHeaders: "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+}));
+
+// For preflight requests
+app.options('*', cors());
+
+
 app.use(express.json());
 app.use(cookieParser());
 

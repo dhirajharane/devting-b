@@ -26,6 +26,16 @@ const compareOtp = async (otp, hashedOtp) => {
   return bcrypt.compare(otp, hashedOtp);
 };
 
+const createSafeUserObject = (user) => {
+  if (!user) return null;
+  return {
+    id: user._id,
+    emailId: user.emailId,
+    firstName: user.firstName || null,
+    lastName: user.lastName || null,
+  };
+};
+
 // --- 1. Send OTP ---
 authRouter.post(
   "/send-otp",
@@ -76,7 +86,8 @@ authRouter.post(
       if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
       const { emailId, otp, firstName, lastName } = req.body;
-      const user = await User.findOne({ emailId, otpExpires: { $gt: Date.now() } });
+      // Compare otpExpires as Date against current Date
+      const user = await User.findOne({ emailId, otpExpires: { $gt: new Date() } });
 
       if (!user) return res.status(400).send("Invalid or expired OTP.");
       if (user.isVerified) return res.status(400).send("Email already registered.");
@@ -98,12 +109,16 @@ authRouter.post(
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production", // set secure only in production
         sameSite: "none",
         maxAge: 8 * 3600 * 1000,
       });
 
-      res.status(201).json({ message: "Signup successful!" });
+      // Return user data inside data (frontend expects res.data.data for signup)
+      res.status(201).json({
+        message: "Signup successful!",
+        data: createSafeUserObject(user),
+      });
     } catch (err) {
       console.error("Error verifying signup OTP:", err);
       res.status(500).send("Verification failed.");
@@ -122,7 +137,7 @@ authRouter.post(
       if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
       const { emailId, otp } = req.body;
-      const user = await User.findOne({ emailId, otpExpires: { $gt: Date.now() } });
+      const user = await User.findOne({ emailId, otpExpires: { $gt: new Date() } });
 
       if (!user || !user.isVerified) return res.status(400).send("Invalid OTP or unverified user.");
       const isOtpValid = await compareOtp(otp, user.otp);
@@ -136,12 +151,13 @@ authRouter.post(
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "none",
         maxAge: 8 * 3600 * 1000,
       });
 
-      res.json({ message: "Login successful!" });
+      // Return user object directly for login (frontend expects res.data to be user for login)
+      res.json(createSafeUserObject(user));
     } catch (err) {
       console.error("Error verifying login OTP:", err);
       res.status(500).send("Login failed.");
@@ -173,12 +189,13 @@ authRouter.post(
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "none",
         maxAge: 8 * 3600 * 1000,
       });
 
-      res.json({ message: "Login successful!" });
+      // Return user object so frontend can dispatch addUser(res.data)
+      res.json(createSafeUserObject(user));
     } catch (err) {
       console.error("Password login error:", err);
       res.status(500).send("Login failed.");

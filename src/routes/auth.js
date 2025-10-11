@@ -15,7 +15,8 @@ const otpLimiter = rateLimit({
 });
 
 // --- OTP Helpers ---
-const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+const generateOtp = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
 const hashOtp = async (otp) => {
   const salt = await bcrypt.genSalt(10);
@@ -42,33 +43,77 @@ authRouter.post(
   otpLimiter,
   body("emailId").isEmail().withMessage("Valid email required"),
   async (req, res) => {
+    console.log("Received /send-otp request", req.body);
+
     try {
+      // Validate email input
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        console.log("Validation errors:", errors.array());
+        return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const { emailId } = req.body;
-      let user = await User.findOne({ emailId });
+      const emailId = req.body.emailId.trim().toLowerCase();
+      console.log("Processing email:", emailId);
 
+      // Check if user exists
+      let user = await User.findOne({ emailId });
+      console.log("User found:", !!user);
+
+      // Prevent sending OTP to already verified users
+      if (user && user.isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already verified. Please log in.",
+        });
+      }
+
+      // Generate OTP and hash
       const otp = generateOtp();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
       const hashedOtp = await hashOtp(otp);
+      console.log("OTP generated and hashed");
 
+      // Update or create user with OTP
       if (!user) {
-        user = new User({ emailId, otp: hashedOtp, otpExpires, isVerified: false });
+        user = new User({
+          emailId,
+          otp: hashedOtp,
+          otpExpires,
+          isVerified: false,
+        });
       } else {
         user.otp = hashedOtp;
         user.otpExpires = otpExpires;
       }
 
       await user.save();
-      await sendOtpEmail(emailId, otp);
+      console.log("User saved/updated with OTP");
 
-      res.json({ message: "OTP sent to your email." });
+      // Send OTP email
+      try {
+        await sendOtpEmail(emailId, otp);
+        console.log("OTP email sent successfully");
+      } catch (emailErr) {
+        console.error("Failed to send OTP email:", emailErr);
+        return res
+          .status(500)
+          .json({ success: false, message: "Failed to send OTP email." });
+      }
+
+      // Success response
+      return res.status(200).json({
+        success: true,
+        message: "OTP sent successfully",
+        data: { emailId },
+      });
     } catch (err) {
-      console.error("Error sending OTP:", err);
-      res.status(500).send("Failed to send OTP.");
+      console.error("Server error in /send-otp:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Server error while sending OTP",
+        error: err.message, // include error message for debugging
+      });
     }
   }
 );
@@ -83,14 +128,19 @@ authRouter.post(
   async (req, res) => {
     try {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+      if (!errors.isEmpty())
+        return res.status(400).json({ errors: errors.array() });
 
       const { emailId, otp, firstName, lastName } = req.body;
       // Compare otpExpires as Date against current Date
-      const user = await User.findOne({ emailId, otpExpires: { $gt: new Date() } });
+      const user = await User.findOne({
+        emailId,
+        otpExpires: { $gt: new Date() },
+      });
 
       if (!user) return res.status(400).send("Invalid or expired OTP.");
-      if (user.isVerified) return res.status(400).send("Email already registered.");
+      if (user.isVerified)
+        return res.status(400).send("Email already registered.");
 
       const isOtpValid = await compareOtp(otp, user.otp);
       if (!isOtpValid) return res.status(400).send("Invalid OTP.");
@@ -134,12 +184,17 @@ authRouter.post(
   async (req, res) => {
     try {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+      if (!errors.isEmpty())
+        return res.status(400).json({ errors: errors.array() });
 
       const { emailId, otp } = req.body;
-      const user = await User.findOne({ emailId, otpExpires: { $gt: new Date() } });
+      const user = await User.findOne({
+        emailId,
+        otpExpires: { $gt: new Date() },
+      });
 
-      if (!user || !user.isVerified) return res.status(400).send("Invalid OTP or unverified user.");
+      if (!user || !user.isVerified)
+        return res.status(400).send("Invalid OTP or unverified user.");
       const isOtpValid = await compareOtp(otp, user.otp);
       if (!isOtpValid) return res.status(400).send("Invalid OTP.");
 
@@ -147,7 +202,9 @@ authRouter.post(
       user.otpExpires = null;
       await user.save();
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "8h" });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "8h",
+      });
 
       res.cookie("token", token, {
         httpOnly: true,
@@ -173,7 +230,8 @@ authRouter.post(
   async (req, res) => {
     try {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+      if (!errors.isEmpty())
+        return res.status(400).json({ errors: errors.array() });
 
       const { emailId, password } = req.body;
       const user = await User.findOne({ emailId });
@@ -185,7 +243,9 @@ authRouter.post(
       const isPasswordValid = await user.validatePassword(password);
       if (!isPasswordValid) return res.status(401).send("Invalid credentials.");
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "8h" });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "8h",
+      });
 
       res.cookie("token", token, {
         httpOnly: true,

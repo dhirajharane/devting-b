@@ -15,14 +15,10 @@ const MAIL_SECURE = process.env.MAIL_SECURE === "true"; // use "true" in env for
 const transporter = nodemailer.createTransport({
   host: MAIL_HOST,
   port: MAIL_PORT,
-  secure: MAIL_SECURE, // true for 465, false for 587
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
-  },
-  // sometimes needed for some providers on hosted platforms
-  tls: {
-    rejectUnauthorized: process.env.MAIL_REJECT_UNAUTHORIZED !== "false",
   },
 });
 

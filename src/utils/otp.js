@@ -1,7 +1,17 @@
 const nodemailer = require("nodemailer");
 
+// Check for essential environment variables at startup
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  console.error(
+    "Missing required environment variables for email service (EMAIL_USER, EMAIL_PASS)"
+  );
+  // process.exit(1); // Optional: exit if credentials are not set
+}
+
 const transporter = nodemailer.createTransport({
-  service: "gmail", // or other services
+  host: process.env.MAIL_HOST,
+  port: 587, // Standard SMTP port for TLS
+  secure: false, // true for port 465
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -38,7 +48,14 @@ const sendOtpEmail = async (to, otp) => {
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`OTP email sent successfully to ${to}`);
+  } catch (error) {
+    console.error(`Error sending OTP email to ${to}:`, error);
+    // Re-throw the error to be caught by the calling function
+    throw new Error("Failed to send OTP email.");
+  }
 };
 
 module.exports = { sendOtpEmail };

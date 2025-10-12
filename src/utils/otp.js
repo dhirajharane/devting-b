@@ -6,14 +6,21 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   );
 }
 
+// Use explicit host/port to avoid SSL errors on Render
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // true for 465, false for 587
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    pass: process.env.EMAIL_PASS, // app password if using Gmail 2FA
+  },
+  tls: {
+    rejectUnauthorized: false, // avoid self-signed issues on Render
   },
 });
 
+// Verify transporter before sending emails
 transporter.verify((error, success) => {
   if (error) {
     console.error("Mail transporter verification failed:", error);
@@ -29,27 +36,13 @@ const sendOtpEmail = async (to, otp) => {
     subject: "Your DevTing Verification Code",
     text: `Your OTP for DevTing is: ${otp}. It is valid for 5 minutes.`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; background-color: #f9f9f9;">
-        <h2 style="color: #333;">Hello from DevTing 👋</h2>
-        <p style="color: #555; font-size: 16px;">
-          Use the OTP below to complete your verification:
-        </p>
-        <div style="text-align: center; margin: 20px 0;">
-          <span style="font-size: 32px; font-weight: bold; color: #1a73e8; letter-spacing: 4px;">
-            ${otp}
-          </span>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin:auto; border:1px solid #e0e0e0; padding:20px; border-radius:8px; background:#f9f9f9;">
+        <h2>Hello from DevTing 👋</h2>
+        <p>Use the OTP below to complete your verification:</p>
+        <div style="text-align:center; margin:20px 0;">
+          <span style="font-size:32px; font-weight:bold; color:#1a73e8; letter-spacing:4px;">${otp}</span>
         </div>
-        <p style="color: #555; font-size: 14px;">
-          This OTP is valid for <b>5 minutes</b>. Do not share it with anyone.
-        </p>
-        <p style="color: #999; font-size: 12px; margin-top: 30px;">
-          If you didn’t request this OTP, you can safely ignore this email.
-        </p>
-        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-        <p style="color: #777; font-size: 12px; text-align: center;">
-          DevTing Inc.<br>
-          &copy; ${new Date().getFullYear()} DevTing. All rights reserved.
-        </p>
+        <p>This OTP is valid for <b>5 minutes</b>. Do not share it.</p>
       </div>
     `,
   };

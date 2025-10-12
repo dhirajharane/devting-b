@@ -320,7 +320,7 @@ authRouter.post("/login/password", async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "none",
       expires: new Date(Date.now() + 8 * 3600000), // 8 hours
     });

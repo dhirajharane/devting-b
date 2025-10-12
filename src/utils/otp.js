@@ -1,64 +1,41 @@
 const nodemailer = require("nodemailer");
 
-let configOptions = {
-    host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT,
-    secure:false,
-    auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-    tls: {
-        rejectUnauthorized: true,
-        minVersion: 'TLSv1.2'
-    }
-};
-
-// Check for essential environment variables at startup
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-  console.error(
-    "Missing required environment variables for email service (EMAIL_USER, EMAIL_PASS)"
+  throw new Error(
+    "Missing required environment variables for email service: EMAIL_USER, EMAIL_PASS"
   );
 }
 
-const transporter = nodemailer.createTransport(configOptions);
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("Mail transporter verify failed:", err);
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("Mail transporter verification failed:", error);
   } else {
-    console.log("Mail transporter ready");
+    console.log("Mail transporter is ready to send emails");
   }
 });
 
 const sendOtpEmail = async (to, otp) => {
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `"DevTing" <${process.env.EMAIL_USER}>`,
     to,
     subject: "Your DevTing Verification Code",
     text: `Your OTP for DevTing is: ${otp}. It is valid for 5 minutes.`,
     html: `
-      <div style="
-        font-family: Arial, sans-serif;
-        max-width: 600px;
-        margin: auto;
-        border: 1px solid #e0e0e0;
-        padding: 20px;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-      ">
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; background-color: #f9f9f9;">
         <h2 style="color: #333;">Hello from DevTing 👋</h2>
         <p style="color: #555; font-size: 16px;">
           Use the OTP below to complete your verification:
         </p>
         <div style="text-align: center; margin: 20px 0;">
-          <span style="
-            font-size: 32px;
-            font-weight: bold;
-            color: #1a73e8;
-            letter-spacing: 4px;
-          ">
+          <span style="font-size: 32px; font-weight: bold; color: #1a73e8; letter-spacing: 4px;">
             ${otp}
           </span>
         </div>
@@ -85,6 +62,5 @@ const sendOtpEmail = async (to, otp) => {
     throw new Error("Failed to send OTP email");
   }
 };
-
 
 module.exports = { sendOtpEmail };

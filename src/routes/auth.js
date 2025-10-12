@@ -49,7 +49,13 @@ authRouter.post(
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const { emailId, firstName, lastName, password } = req.body;
+      let { emailId, firstName, lastName, password } = req.body;
+      if (!emailId) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required.",
+        });
+      }
       const normalizedEmail = emailId.trim().toLowerCase();
 
       let user = await User.findOne({ emailId: normalizedEmail });
@@ -90,6 +96,9 @@ authRouter.post(
         // Update OTP for existing user
         user.otp = hashedOtp;
         user.otpExpires = otpExpires;
+        // Only update firstName/lastName if not set
+        if (!user.firstName && firstName) user.firstName = firstName;
+        if (!user.lastName && lastName) user.lastName = lastName;
       }
 
       await user.save();
@@ -113,7 +122,6 @@ authRouter.post(
   }
 );
 
-
 // --- 2. Verify OTP for Signup ---
 authRouter.post(
   "/verify-otp/signup",
@@ -128,9 +136,9 @@ authRouter.post(
         return res.status(400).json({ errors: errors.array() });
 
       const { emailId, otp, firstName, lastName } = req.body;
-      // Compare otpExpires as Date against current Date
+      const normalizedEmail = emailId.trim().toLowerCase();
       const user = await User.findOne({
-        emailId,
+        emailId: normalizedEmail,
         otpExpires: { $gt: new Date() },
       });
 
@@ -155,12 +163,11 @@ authRouter.post(
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // set secure only in production
+        secure: process.env.NODE_ENV === "production",
         sameSite: "none",
         maxAge: 8 * 3600 * 1000,
       });
 
-      // Return user data inside data (frontend expects res.data.data for signup)
       res.status(201).json({
         message: "Signup successful!",
         data: createSafeUserObject(user),
@@ -184,8 +191,9 @@ authRouter.post(
         return res.status(400).json({ errors: errors.array() });
 
       const { emailId, otp } = req.body;
+      const normalizedEmail = emailId.trim().toLowerCase();
       const user = await User.findOne({
-        emailId,
+        emailId: normalizedEmail,
         otpExpires: { $gt: new Date() },
       });
 
@@ -209,7 +217,6 @@ authRouter.post(
         maxAge: 8 * 3600 * 1000,
       });
 
-      // Return user object directly for login (frontend expects res.data to be user for login)
       res.json(createSafeUserObject(user));
     } catch (err) {
       console.error("Error verifying login OTP:", err);
@@ -230,7 +237,8 @@ authRouter.post(
         return res.status(400).json({ errors: errors.array() });
 
       const { emailId, password } = req.body;
-      const user = await User.findOne({ emailId });
+      const normalizedEmail = emailId.trim().toLowerCase();
+      const user = await User.findOne({ emailId: normalizedEmail });
 
       if (!user || !user.password) {
         return res.status(401).send("Invalid credentials.");
@@ -250,7 +258,6 @@ authRouter.post(
         maxAge: 8 * 3600 * 1000,
       });
 
-      // Return user object so frontend can dispatch addUser(res.data)
       res.json(createSafeUserObject(user));
     } catch (err) {
       console.error("Password login error:", err);

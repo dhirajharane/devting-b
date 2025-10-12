@@ -30,7 +30,7 @@ const compareOtp = async (otp, hashedOtp) => {
 const createSafeUserObject = (user) => {
   if (!user) return null;
   return {
-    id: user._id,
+    _id: user._id,
     emailId: user.emailId,
     firstName: user.firstName || null,
     lastName: user.lastName || null,
@@ -161,7 +161,7 @@ authRouter.post(
 
       await user.save();
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "8h",
       });
 
@@ -282,7 +282,7 @@ authRouter.post(
       user.otpExpires = null;
       await user.save();
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "8h",
       });
 

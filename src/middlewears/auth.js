@@ -9,7 +9,7 @@ const userAuth = async (req, res, next) => {
     }
 
     const decodedObj = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decodedObj.id);
+    const user = await User.findById(decodedObj._id);
 
     if (!user) {
       return res.status(401).send("Invalid user");

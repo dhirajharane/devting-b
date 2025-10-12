@@ -49,10 +49,10 @@ authRouter.post(
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
-      const emailId = req.body.emailId.trim().toLowerCase();
-      const { firstName, lastName, password } = req.body; // <-- get these
+      const { emailId, firstName, lastName, password } = req.body;
+      const normalizedEmail = emailId.trim().toLowerCase();
 
-      let user = await User.findOne({ emailId });
+      let user = await User.findOne({ emailId: normalizedEmail });
 
       // Prevent sending OTP to already verified users
       if (user && user.isVerified) {
@@ -67,19 +67,18 @@ authRouter.post(
       const hashedOtp = await hashOtp(otp);
 
       if (!user) {
-        // Create new user with email, firstName, lastName, password, otp
+        // Create new user with required fields
         if (!firstName || !lastName || !password) {
           return res.status(400).json({
             success: false,
-            message:
-              "Missing required fields for sign-up: firstName, lastName, password",
+            message: "Missing required fields: firstName, lastName, password",
           });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         user = new User({
-          emailId,
+          emailId: normalizedEmail,
           firstName,
           lastName,
           password: hashedPassword,
@@ -88,19 +87,20 @@ authRouter.post(
           isVerified: false,
         });
       } else {
-        // Existing user — just update OTP
+        // Update OTP for existing user
         user.otp = hashedOtp;
         user.otpExpires = otpExpires;
       }
 
       await user.save();
 
-      await sendOtpEmail(emailId, otp);
+      // Send OTP email
+      await sendOtpEmail(normalizedEmail, otp);
 
       return res.status(200).json({
         success: true,
         message: "OTP sent successfully",
-        data: { emailId },
+        data: { emailId: normalizedEmail },
       });
     } catch (err) {
       console.error("Server error in /send-otp:", err);

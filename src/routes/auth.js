@@ -103,8 +103,23 @@ authRouter.post(
 
       await user.save();
 
+      // lines for debugging
+      console.log(`Attempting to send OTP to: ${normalizedEmail}`);
+      console.log(`Verifying environment variables...`);
+      console.log(`EMAIL_USER is set: ${!!process.env.EMAIL_USER}`);
+      console.log(`EMAIL_PASS is set: ${!!process.env.EMAIL_PASS}`);
+
       // Send OTP email
-      await sendOtpEmail(normalizedEmail, otp);
+      try {
+        await sendOtpEmail(normalizedEmail, otp);
+      } catch (emailError) {
+        console.error("Error sending OTP email:", emailError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send OTP email.",
+          error: emailError.message,
+        });
+      }
 
       return res.status(200).json({
         success: true,

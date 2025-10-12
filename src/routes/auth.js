@@ -182,6 +182,77 @@ authRouter.post(
     }
   }
 );
+// -- send otp for login
+authRouter.post(
+  "/login-otp",
+  otpLimiter,
+  body("emailId").isEmail().withMessage("Valid email required"),
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+
+      const { emailId } = req.body;
+      if (!emailId) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required.",
+        });
+      }
+
+      const normalizedEmail = emailId.trim().toLowerCase();
+      const user = await User.findOne({ emailId: normalizedEmail });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "No account found with this email. Please sign up first.",
+        });
+      }
+
+      if (!user.isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email not verified. Please complete signup verification first.",
+        });
+      }
+
+      const otp = generateOtp();
+      const hashedOtp = await hashOtp(otp);
+      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // valid 5 min
+
+      user.otp = hashedOtp;
+      user.otpExpires = otpExpires;
+      await user.save();
+
+      try {
+        await sendOtpEmail(normalizedEmail, otp);
+      } catch (emailError) {
+        console.error("Error sending OTP email:", emailError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send OTP email.",
+          error: emailError.message,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "OTP sent successfully for login.",
+        data: { emailId: normalizedEmail },
+      });
+    } catch (err) {
+      console.error("Server error in /login-otp:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Server error while sending login OTP",
+        error: err.message,
+      });
+    }
+  }
+);
 
 // --- 3. Verify OTP for Login ---
 authRouter.post(

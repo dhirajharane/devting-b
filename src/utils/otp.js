@@ -9,8 +9,7 @@ if (!process.env.SENDGRID_API_KEY) {
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const sendOtpEmail = async (to, otp) => {
-  // The 'from' email address must be a verified sender in your SendGrid account.
-  const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'dhirajharane@gmail.com';
+  const fromEmail ='dhirajharane@gmail.com';
 
   const msg = {
   to,

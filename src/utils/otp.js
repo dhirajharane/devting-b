@@ -1,22 +1,20 @@
-const sgMail = require('@sendgrid/mail');
+const sgMail = require("@sendgrid/mail");
 
-// This check ensures your app has the SendGrid API key before it starts.
 if (!process.env.SENDGRID_API_KEY) {
   throw new Error("Missing required environment variable: SENDGRID_API_KEY");
 }
 
-
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const sendOtpEmail = async (to, otp) => {
-  const fromEmail ='dhirajharane@gmail.com';
+  const fromEmail = "dhirajharane@gmail.com";
 
   const msg = {
-  to,
-  from: fromEmail,
-  subject: "🔐 Your DevTing Verification Code",
-  text: `Your DevTing verification code is: ${otp}. It will expire in 5 minutes.`,
-  html: `
+    to,
+    from: fromEmail,
+    subject: "🔐 Your DevTing Verification Code",
+    text: `Your DevTing verification code is: ${otp}. It will expire in 5 minutes.`,
+    html: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; background-color: #f8f9fa; border-radius: 10px; border: 1px solid #e0e0e0;">
       <h2 style="color: #333; text-align: center;">🔐 DevTing Verification Code</h2>
       <p style="color: #555; font-size: 16px; text-align: center;">
@@ -36,17 +34,11 @@ const sendOtpEmail = async (to, otp) => {
       </p>
     </div>
   `,
-};
-
+  };
 
   try {
     await sgMail.send(msg);
-    console.log(`✅ OTP email sent successfully to ${to} via SendGrid`);
   } catch (error) {
-    console.error(`❌ Failed to send OTP email to ${to} via SendGrid:`, error);
-    if (error.response) {
-      console.error(error.response.body);
-    }
     throw new Error("Failed to send OTP email.");
   }
 };

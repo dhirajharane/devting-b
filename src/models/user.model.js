@@ -17,7 +17,6 @@ const userSchema = new mongoose.Schema(
       minlength: 3,
       maxlength: 20,
     },
-
     emailId: {
       type: String,
       required: true,
@@ -31,7 +30,6 @@ const userSchema = new mongoose.Schema(
         message: "Please enter a valid email address.",
       },
     },
-
     password: {
       type: String,
       required: true,
@@ -100,23 +98,14 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.methods.getJWT = async function () {
-  const user = this;
-
   const token = await jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
-
   return token;
 };
 
 userSchema.methods.validatePassword = async function (passwordInputByUser) {
-  const user = this;
-  const isPasswordValid = await bcrypt.compare(
-    passwordInputByUser,
-    this.password
-  );
-
-  return isPasswordValid;
+  return await bcrypt.compare(passwordInputByUser, this.password);
 };
 
 const User = mongoose.model("User", userSchema);

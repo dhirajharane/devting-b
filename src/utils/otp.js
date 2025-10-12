@@ -21,9 +21,8 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   );
 }
 
-const transporter = nodemailer.createTransport({
-configOptions
-});
+const transporter = nodemailer.createTransport(configOptions);
+
 
 transporter.verify((err, success) => {
   if (err) {

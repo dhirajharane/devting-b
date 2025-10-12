@@ -28,29 +28,15 @@ const allowedOrigins = [
   "https://devting-f.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow mobile clients or curl
-      if (!allowedOrigins.includes(origin)) {
-        return callback(new Error("Not allowed by CORS"));
-      }
-      return callback(null, true);
-    },
-    credentials: true,
-    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Origin",
-      "X-Requested-With",
-      "Content-Type",
-      "Accept",
-      "Authorization",
-    ],
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+  credentials: true
+};
 
-// Handle preflight requests
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+
 
 // --- Middleware ---
 app.use(express.json());

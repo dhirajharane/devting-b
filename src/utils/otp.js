@@ -1,21 +1,29 @@
 const nodemailer = require("nodemailer");
 
+// This check is crucial. It ensures your app doesn't start without the necessary credentials.
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   throw new Error(
     "Missing required environment variables for email service: EMAIL_USER, EMAIL_PASS"
   );
 }
 
-
+// Production-ready configuration for Nodemailer in a cloud environment
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL, true for port 465
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, 
+    pass: process.env.EMAIL_PASS, // This MUST be a Gmail App Password
+  },
+  // Add a timeout and reject unauthorized connections for better security
+  tls: {
+    rejectUnauthorized: true,
   },
 });
 
-// Verify transporter before sending emails
+
+// Verify the transporter configuration on startup
 transporter.verify((error, success) => {
   if (error) {
     console.error("Mail transporter verification failed:", error);
@@ -47,6 +55,7 @@ const sendOtpEmail = async (to, otp) => {
     console.log(`✅ OTP email sent successfully to ${to}`);
   } catch (error) {
     console.error(`❌ Failed to send OTP email to ${to}:`, error);
+    // Re-throw the error to be caught by the route handler
     throw new Error("Failed to send OTP email");
   }
 };

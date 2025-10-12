@@ -60,7 +60,6 @@ authRouter.post(
 
       let user = await User.findOne({ emailId: normalizedEmail });
 
-      // Prevent sending OTP to already verified users
       if (user && user.isVerified) {
         return res.status(400).json({
           success: false,
@@ -73,16 +72,13 @@ authRouter.post(
       const hashedOtp = await hashOtp(otp);
 
       if (!user) {
-        // Create new user with required fields
         if (!firstName || !lastName || !password) {
           return res.status(400).json({
             success: false,
             message: "Missing required fields: firstName, lastName, password",
           });
         }
-
         const hashedPassword = await bcrypt.hash(password, 10);
-
         user = new User({
           emailId: normalizedEmail,
           firstName,
@@ -93,26 +89,19 @@ authRouter.post(
           isVerified: false,
         });
       } else {
-        // Update OTP for existing user
         user.otp = hashedOtp;
         user.otpExpires = otpExpires;
-        // Only update firstName/lastName if not set
         if (!user.firstName && firstName) user.firstName = firstName;
         if (!user.lastName && lastName) user.lastName = lastName;
       }
 
       await user.save();
 
-      // lines for debugging
-      console.log(`Attempting to send OTP to: ${normalizedEmail}`);
-      console.log(`Verifying environment variables...`);
-      console.log(`EMAIL_USER is set: ${!!process.env.EMAIL_USER}`);
-      console.log(`EMAIL_PASS is set: ${!!process.env.EMAIL_PASS}`);
-
-      // Send OTP email
+      // Send OTP email with specific error handling
       try {
         await sendOtpEmail(normalizedEmail, otp);
       } catch (emailError) {
+        // This will catch the "Failed to send OTP email" error from the utility
         console.error("Error sending OTP email:", emailError);
         return res.status(500).json({
           success: false,

@@ -215,7 +215,8 @@ authRouter.post(
       if (!user.isVerified) {
         return res.status(400).json({
           success: false,
-          message: "Email not verified. Please complete signup verification first.",
+          message:
+            "Email not verified. Please complete signup verification first.",
         });
       }
 
@@ -301,45 +302,35 @@ authRouter.post(
 );
 
 // --- 4. Password Login ---
-authRouter.post(
-  "/login/password",
-  body("emailId").isEmail(),
-  body("password").notEmpty(),
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty())
-        return res.status(400).json({ errors: errors.array() });
+authRouter.post("/login/password", async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
 
-      const { emailId, password } = req.body;
-      const normalizedEmail = emailId.trim().toLowerCase();
-      const user = await User.findOne({ emailId: normalizedEmail });
-
-      if (!user || !user.password) {
-        return res.status(401).send("Invalid credentials.");
-      }
-
-      const isPasswordValid = await user.validatePassword(password);
-      if (!isPasswordValid) return res.status(401).send("Invalid credentials.");
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "8h",
-      });
-
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "none",
-        maxAge: 8 * 3600 * 1000,
-      });
-
-      res.json(createSafeUserObject(user));
-    } catch (err) {
-      console.error("Password login error:", err);
-      res.status(500).send("Login failed.");
+    const user = await User.findOne({ emailId });
+    if (!user) {
+      throw new Error("Invalid Credentials");
     }
+
+    const isPasswordValid = await user.validatePassword(password);
+    if (!isPasswordValid) {
+      throw new Error("Invalid Credentials");
+    }
+
+    const token = await user.getJWT();
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      expires: new Date(Date.now() + 8 * 3600000), // 8 hours
+    });
+
+    res.send(user);
+  } catch (err) {
+    res.status(500).send(err.message);
   }
-);
+});
+
 
 // --- 5. Logout ---
 authRouter.post("/logout", (req, res) => {

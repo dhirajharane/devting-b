@@ -55,7 +55,7 @@ userRouter.get("/user/connections", userAuth, async (req, res) => {
   }
 });
 
-// FEED: Only show users with NO connection/request/ignore/self
+
 userRouter.get("/feed", userAuth, async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   let limit = parseInt(req.query.limit) || 10;

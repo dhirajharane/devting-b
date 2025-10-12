@@ -43,22 +43,16 @@ authRouter.post(
   otpLimiter,
   body("emailId").isEmail().withMessage("Valid email required"),
   async (req, res) => {
-    console.log("Received /send-otp request", req.body);
-
     try {
-      // Validate email input
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        console.log("Validation errors:", errors.array());
         return res.status(400).json({ success: false, errors: errors.array() });
       }
 
       const emailId = req.body.emailId.trim().toLowerCase();
-      console.log("Processing email:", emailId);
+      const { firstName, lastName, password } = req.body; // <-- get these
 
-      // Check if user exists
       let user = await User.findOne({ emailId });
-      console.log("User found:", !!user);
 
       // Prevent sending OTP to already verified users
       if (user && user.isVerified) {
@@ -68,40 +62,41 @@ authRouter.post(
         });
       }
 
-      // Generate OTP and hash
       const otp = generateOtp();
-      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 min
       const hashedOtp = await hashOtp(otp);
-      console.log("OTP generated and hashed");
 
-      // Update or create user with OTP
       if (!user) {
+        // Create new user with email, firstName, lastName, password, otp
+        if (!firstName || !lastName || !password) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Missing required fields for sign-up: firstName, lastName, password",
+          });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
         user = new User({
           emailId,
+          firstName,
+          lastName,
+          password: hashedPassword,
           otp: hashedOtp,
           otpExpires,
           isVerified: false,
         });
       } else {
+        // Existing user — just update OTP
         user.otp = hashedOtp;
         user.otpExpires = otpExpires;
       }
 
       await user.save();
-      console.log("User saved/updated with OTP");
 
-      // Send OTP email
-      try {
-        await sendOtpEmail(emailId, otp);
-        console.log("OTP email sent successfully");
-      } catch (emailErr) {
-        console.error("Failed to send OTP email:", emailErr);
-        return res
-          .status(500)
-          .json({ success: false, message: "Failed to send OTP email." });
-      }
+      await sendOtpEmail(emailId, otp);
 
-      // Success response
       return res.status(200).json({
         success: true,
         message: "OTP sent successfully",
@@ -112,11 +107,12 @@ authRouter.post(
       return res.status(500).json({
         success: false,
         message: "Server error while sending OTP",
-        error: err.message, // include error message for debugging
+        error: err.message,
       });
     }
   }
 );
+
 
 // --- 2. Verify OTP for Signup ---
 authRouter.post(

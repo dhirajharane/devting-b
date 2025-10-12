@@ -22,6 +22,8 @@ const chatRouter = require("./routes/chats");
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // --- CORS Setup ---
 const allowedOrigins = [
   "http://localhost:5173",

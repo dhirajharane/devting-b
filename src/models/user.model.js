@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema(
     },
     photoURL: {
       type: String,
-      default: "https://s3.amazonaws.com/37assets/svn/765-default-avatar.png",
+      default: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
     },
     About: {
       type: String,

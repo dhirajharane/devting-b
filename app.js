@@ -4,6 +4,7 @@ const http = require("http");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./src/config/database");
+const { connectRedis } = require("./src/config/redis");
 const initializeSocket = require("./src/utils/socket.js");
 const routes = require("./src/routes");
 
@@ -44,13 +45,19 @@ initializeSocket(server);
 
 const PORT = process.env.PORT || 3000;
 
-connectDB()
-  .then(() => {
+const startServer = async () => {
+  try {
+    await connectDB();
     console.log("✅ Database connected successfully");
+    
+    await connectRedis();
+    
     server.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.error("❌ Database connection failed:", err);
-  });
+  } catch (err) {
+    console.error("❌ Connection failed:", err);
+  }
+};
+
+startServer();

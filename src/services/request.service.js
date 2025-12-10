@@ -1,5 +1,6 @@
 const { User } = require("../models/user.model");
 const { ConnectionRequestModel } = require("../models/connectionRequest.model");
+const { redisClient } = require("../config/redis");
 
 const sendRequest = async (fromUserId, toUserId, status) => {
   const allowedStatus = ["interested", "ignored"];
@@ -33,7 +34,11 @@ const sendRequest = async (fromUserId, toUserId, status) => {
     status,
   });
 
-  return await connectionRequest.save();
+  const savedRequest = await connectionRequest.save();
+
+  await redisClient.del(`feed:${fromUserId}:1:10`);
+
+  return savedRequest;
 };
 
 const reviewRequest = async (loggedInUser, requestId, status) => {

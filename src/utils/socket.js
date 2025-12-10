@@ -1,10 +1,10 @@
 const socket = require("socket.io");
+const { createAdapter } = require("@socket.io/redis-adapter");
 const { Chat } = require("../models/chat.model");
 const { ConnectionRequestModel } = require("../models/connectionRequest.model");
 const { User } = require("../models/user.model");
+const { redisClient } = require("../config/redis");
 const crypto = require("crypto");
-
-const onlineUsers = new Map();
 
 const initializeSocket = (server) => {
   function generateRoomId(userId, targetId) {
@@ -16,18 +16,26 @@ const initializeSocket = (server) => {
 
   const io = socket(server, {
     cors: {
-      origin: "https://devting-f.vercel.app",
+      origin: [
+        "http://localhost:5173",
+        "https://devting-f.vercel.app"
+      ],
       methods: ["GET", "POST"],
       credentials: true,
     },
   });
 
-  io.on("connection", (socket) => {
-    let currentUserId = null;
+  const pubClient = redisClient.duplicate();
+  const subClient = redisClient.duplicate();
 
+  Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+  });
+
+  io.on("connection", (socket) => {
     socket.on("userOnline", async ({ userId }) => {
-      currentUserId = userId;
-      onlineUsers.set(userId, socket.id);
+      await redisClient.sAdd("online_users", userId);
+      await redisClient.set(`socket_user:${socket.id}`, userId);
       await User.findByIdAndUpdate(userId, { isOnline: true });
       io.emit("userStatus", { userId, isOnline: true });
     });
@@ -111,14 +119,18 @@ const initializeSocket = (server) => {
     );
 
     socket.on("disconnect", async () => {
-      if (currentUserId) {
-        onlineUsers.delete(currentUserId);
-        await User.findByIdAndUpdate(currentUserId, {
+      const userId = await redisClient.get(`socket_user:${socket.id}`);
+      
+      if (userId) {
+        await redisClient.sRem("online_users", userId);
+        await redisClient.del(`socket_user:${socket.id}`);
+        
+        await User.findByIdAndUpdate(userId, {
           isOnline: false,
           lastSeen: new Date(),
         });
         io.emit("userStatus", {
-          userId: currentUserId,
+          userId,
           isOnline: false,
           lastSeen: new Date(),
         });

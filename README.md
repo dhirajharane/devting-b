@@ -1,4 +1,4 @@
-# 🚀 DevTing-B — Developer Social Platform Backend
+# 🚀 DevTing-B - Developer Social Platform Backend
 
 Welcome to **DevTing-B**, the robust backend system behind a modern, real-time social platform for developers.  
 Crafted using **Node.js**, **Express**, **MongoDB**, and **Socket.io**, this backend delivers secure authentication, live messaging, intelligent suggestions, and seamless developer connections — all optimized for performance and scalability.
@@ -12,7 +12,8 @@ Crafted using **Node.js**, **Express**, **MongoDB**, and **Socket.io**, this bac
 - 🔐 **Authentication** – JWT-based signup, login, and logout
 - 👤 **Profile Management** – View and update profile, reset passwords
 - 🤝 **Connection System** – Send, receive, and review connection requests
-- 💬 **Real-Time Chat** – Instant messaging with seen status and presence detection
+- 💬 **Scalable Real-Time Chat** – Instant messaging powered by **Redis Pub/Sub** for multi-server support.
+- ⚡ **High-Performance Feeds** – **Redis Caching** strategy to serve user feeds instantly and reduce database load.
 - 🔎 **Developer Search** – Search users by name or skills
 - 🧭 **Feed Recommendations** – Discover developers you’re not yet connected with
 - 🧱 **Modular Architecture** – Scalable code structure with MongoDB
@@ -27,6 +28,7 @@ Crafted using **Node.js**, **Express**, **MongoDB**, and **Socket.io**, this bac
 | **Node.js**       | JavaScript runtime                |
 | **Express.js**    | RESTful API framework             |
 | **MongoDB**       | NoSQL database                    |
+| **Redis**         | Caching & Pub/Sub Broker          |
 | **Mongoose**      | MongoDB ODM                       |
 | **Socket.io**     | Real-time communication           |
 | **JWT**           | User authentication               |
@@ -121,10 +123,20 @@ Access the server at: `http://localhost:3000`
 
 ---
 
+## 💬 Real-Time Architecture (Redis + Socket.io)
+
+ - This project uses the Socket.io Redis Adapter to enable horizontal scaling.
+ - Pub/Sub Messaging: Messages are published to Redis so that users connected to different server instances can communicate seamlessly.
+ - Online Status: User presence is tracked in Redis Sets for fast, real-time status updates.
+ - Feed Caching: Complex aggregation queries for the user feed are cached in Redis to improve response times and reduce database costs.
+
+---   
+
 ## 🌐 Deployment Notes
 
 - Deploy using platforms like **Render**, **Railway**, or **Heroku**
 - Configure `.env` variables in your hosting dashboard
+- Redis Service: You must provision a Redis instance (e.g., Render Key-Value Store, AWS ElastiCache, or Upstash).
 - Enable WebSocket support for Socket.io
 - Update CORS settings to match frontend origin
 

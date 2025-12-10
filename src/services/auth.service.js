@@ -142,7 +142,9 @@ const verifyLoginOtp = async (emailId, otp) => {
 };
 
 const loginWithPassword = async (emailId, password) => {
-  const user = await User.findOne({ emailId });
+  const normalizedEmail = emailId.trim().toLowerCase(); 
+  
+  const user = await User.findOne({ emailId: normalizedEmail });
   if (!user) {
     throw new Error("Invalid Credentials");
   }
